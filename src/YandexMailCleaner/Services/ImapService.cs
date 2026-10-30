@@ -24,10 +24,12 @@ public sealed class ImapService : IAsyncDisposable
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan FolderTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan SearchTimeout = TimeSpan.FromSeconds(180);
+    private static readonly TimeSpan SizeFetchTimeout = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan MoveBatchTimeout = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(25);
 
     private const int MoveBatchSize = 200;
+    private const int SizeFetchBatchSize = 2000;
 
     private readonly SemaphoreSlim _connectLock = new(1, 1);
 
@@ -250,7 +252,8 @@ public sealed class ImapService : IAsyncDisposable
             {
                 Path = outcome.Path,
                 DisplayName = outcome.DisplayName,
-                Uids = outcome.Uids
+                Uids = outcome.Uids,
+                Bytes = outcome.Bytes
             });
 
             progress?.Report($"«{outcome.DisplayName}»: найдено {outcome.Uids.Count} писем.");
@@ -298,11 +301,19 @@ public sealed class ImapService : IAsyncDisposable
                     AppLogger.Info(
                         $"Поиск: папка '{path}', найдено {uids.Count}, {stopwatch.Elapsed.TotalSeconds:0.0} c");
 
+                    long totalBytes = 0;
+                    if (uids.Count > 0)
+                    {
+                        progress?.Report($"«{display}»: подсчёт общего размера…");
+                        totalBytes = await GetTotalSizeAsync(folder, uids, ct).ConfigureAwait(false);
+                    }
+
                     return new FolderSearchOutcome
                     {
                         Path = fullName,
                         DisplayName = display,
-                        Uids = uids
+                        Uids = uids,
+                        Bytes = totalBytes
                     };
                 }
                 finally
@@ -320,6 +331,52 @@ public sealed class ImapService : IAsyncDisposable
         return null;
     }
 
+    /// <summary>
+    /// Суммарный размер писем в байтах. Тела писем не скачиваются:
+    /// сервер возвращает только RFC822.SIZE (атрибут SIZE), запрос идёт пакетами.
+    /// </summary>
+    private static async Task<long> GetTotalSizeAsync(
+        IMailFolder folder,
+        IList<UniqueId> uids,
+        CancellationToken ct)
+    {
+        long total = 0;
+
+        try
+        {
+            for (var offset = 0; offset < uids.Count; offset += SizeFetchBatchSize)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var batch = uids.Skip(offset).Take(SizeFetchBatchSize).ToList();
+                var summaries = await WithTimeoutAsync(
+                    t => folder.FetchAsync(batch, MessageSummaryItems.Size, t),
+                    SizeFetchTimeout, ct).ConfigureAwait(false);
+
+                foreach (var summary in summaries)
+                {
+                    if (summary.Size is { } size)
+                        total += size;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (IsConnectionError(ex))
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Не удалось подсчитать общий размер писем", ex);
+            return 0;
+        }
+
+        return total;
+    }
+
     /// <summary>Перемещает найденные письма в Корзину Яндекса пакетами.</summary>
     public async Task<CleanupResult> ExecutePlanAsync(
         CleanupPlan plan,
@@ -330,6 +387,7 @@ public sealed class ImapService : IAsyncDisposable
 
         var totalToMove = plan.Folders.Sum(f => f.Uids.Count);
         var moved = 0;
+        long movedBytes = 0;
         var failedFolders = 0;
         var processed = 0;
 
@@ -378,6 +436,8 @@ public sealed class ImapService : IAsyncDisposable
                         progress?.Report($"Перемещение: {moved} из {totalToMove}…");
                     }
 
+                    movedBytes += folderPlan.Bytes;
+
                     AppLogger.Info(
                         $"В Корзину: папка '{folderPlan.Path}', писем {folderPlan.Uids.Count}");
                 }
@@ -408,6 +468,7 @@ public sealed class ImapService : IAsyncDisposable
         return new CleanupResult
         {
             MovedCount = moved,
+            MovedBytes = movedBytes,
             FailedFolders = failedFolders
         };
     }
@@ -547,5 +608,6 @@ public sealed class ImapService : IAsyncDisposable
         public string Path { get; init; } = "";
         public string DisplayName { get; init; } = "";
         public IList<UniqueId> Uids { get; init; } = new List<UniqueId>();
+        public long Bytes { get; init; }
     }
 }

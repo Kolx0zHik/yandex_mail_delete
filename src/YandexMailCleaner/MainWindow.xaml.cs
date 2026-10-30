@@ -220,7 +220,7 @@ public partial class MainWindow : Window
             SetBusy(false);
 
             var planDetails = plan.TotalBytes > 0
-                ? $"Найдено писем: {plan.TotalCount} (~{SizeFormatter.Format(plan.TotalBytes)})."
+                ? $"Найдено писем: {plan.TotalCount}, общий размер: {SizeFormatter.Format(plan.TotalBytes)}."
                 : $"Найдено писем: {plan.TotalCount}.";
 
             var confirmed = DialogWindow.Confirm(

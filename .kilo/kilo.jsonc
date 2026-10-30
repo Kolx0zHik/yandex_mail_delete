@@ -1,0 +1,6 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "commit_message": {
+    "prompt": "Сгененирурй commit на русском языке очень коротко. Максимум 5 слов"
+  }
+}
