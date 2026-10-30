@@ -1,0 +1,23 @@
+## bin/obj
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+publish/
+
+## VS / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+## build artifacts
+*.exe
+*.dll
+*.pdb
+!icons/*.ico
+
+## logs / local data
+*.log

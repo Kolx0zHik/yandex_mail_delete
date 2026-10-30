@@ -1,0 +1,77 @@
+<Window x:Class="YandexMailCleaner.DialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Яндекс.Почта — очистка"
+        Width="508"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="Segoe UI"
+        FontSize="14"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Border Margin="18" Background="White" CornerRadius="18" Padding="24">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="26" ShadowDepth="3" Opacity="0.20" Color="#1F2328" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Background="Transparent"
+                  MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="IconBadge" Width="40" Height="40" CornerRadius="12" VerticalAlignment="Top">
+                    <TextBlock x:Name="IconText" FontSize="18"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <TextBlock x:Name="TitleText" Grid.Column="1" Margin="14,0,12,0"
+                           VerticalAlignment="Center" TextWrapping="Wrap"
+                           FontSize="18" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}" />
+
+                <Button x:Name="CloseButton" Grid.Column="2"
+                        Width="30" Height="30" VerticalAlignment="Top"
+                        Style="{StaticResource IconButtonStyle}"
+                        ToolTip="Закрыть"
+                        Click="Close_Click">
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                               Foreground="#6B7280" />
+                </Button>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" Margin="0,16,0,0" MaxHeight="330"
+                          VerticalScrollBarVisibility="Hidden"
+                          HorizontalScrollBarVisibility="Disabled">
+                <TextBlock x:Name="MessageText" TextWrapping="Wrap"
+                           LineHeight="21" Foreground="{StaticResource TextSecondaryBrush}" />
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal"
+                        HorizontalAlignment="Right" Margin="0,24,0,0">
+                <Button x:Name="CancelButton" Content="Отмена" MinWidth="104"
+                        Margin="0,0,10,0" Visibility="Collapsed"
+                        Click="Cancel_Click" />
+                <Button x:Name="OkButton" Content="Понятно" MinWidth="120"
+                        Style="{StaticResource PrimaryButton}"
+                        IsDefault="True"
+                        Click="Ok_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
